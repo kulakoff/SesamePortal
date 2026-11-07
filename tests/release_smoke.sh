@@ -17,6 +17,9 @@ tar -xzf "$WORK/release.tar.gz" -C "$WORK/releases"
 RELEASE="$WORK/releases/sesame-portal"
 test ! -e "$RELEASE/var/config.php"
 diff -r "$ROOT/app" "$RELEASE/app"
+for asset in manifest.webmanifest sw.js offline.html assets/pwa.js assets/pwa/icon-180.png assets/pwa/icon-192.png assets/pwa/icon-512.png; do
+  cmp "$ROOT/public/$asset" "$RELEASE/public/$asset"
+done
 php "$RELEASE/tests/module_bootstrap.php"
 
 # Exercise a full release through the same current/shared-state layout as the updater.

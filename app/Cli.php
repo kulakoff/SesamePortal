@@ -148,6 +148,9 @@ final class Cli
         $pdo->beginTransaction();
         try {
             DB::setForeignKeys(false);
+            // Device credentials are not backup data. Never revive saved logins
+            // when user IDs/password hashes are restored from an older snapshot.
+            $pdo->exec('DELETE FROM remembered_logins');
             foreach (array_reverse(self::BACKUP_TABLES) as $table) {
                 $pdo->exec('DELETE FROM ' . $table);
             }

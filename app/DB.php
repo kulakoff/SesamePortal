@@ -73,6 +73,14 @@ final class DB
         foreach (self::schemaStatements() as $statement) {
             $pdo->exec($statement);
         }
+        $pdo->exec('CREATE TABLE IF NOT EXISTS remembered_logins (
+            token_hash VARCHAR(64) NOT NULL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            credential_hash VARCHAR(64) NOT NULL,
+            created_at BIGINT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )');
+        self::ensureIndex('remembered_logins', 'idx_remembered_logins_user', 'user_id');
         $pdo->exec('CREATE TABLE IF NOT EXISTS rbt_authbackend_secrets (
             secret_id BIGINT NOT NULL PRIMARY KEY,
             rbt_id VARCHAR(128) NOT NULL,

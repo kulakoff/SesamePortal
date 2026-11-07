@@ -134,6 +134,9 @@ trait UsersApi
                     ->execute([$login, password_hash($password, PASSWORD_DEFAULT), $role, $blocked, $hideArchive, $ptzAllowed, $adminComment, Util::randomToken(), TokenService::today(), Util::now()]);
                 $id = DB::lastInsertId('users');
             }
+            if ($blocked || $password !== '') {
+                Auth::revokeRememberedLogins($id);
+            }
             if ($groupIds !== null) {
                 self::replaceLinks('user_groups', 'user_id', $id, 'group_id', $groupIds);
             }

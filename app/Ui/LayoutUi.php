@@ -12,6 +12,9 @@ trait LayoutUi
         echo '<!doctype html><html lang="' . Util::h(I18n::htmlLocale()) . '" dir="' . Util::h(I18n::dir()) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">';
         echo '<title>' . Util::h($title) . ' - SesamePortal</title>';
         echo '<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">';
+        echo '<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/assets/pwa/icon-180.png">';
+        echo '<meta name="theme-color" content="#121212"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="SesamePortal">';
+        echo '<script defer src="' . Util::h(self::assetUrl('/assets/pwa.js')) . '"></script>';
         echo '<link rel="stylesheet" href="' . Util::h(self::assetUrl('/assets/styles.css')) . '">';
         if (str_starts_with(Util::path(), '/video-walls')) {
             echo '<link rel="stylesheet" href="' . Util::h(self::assetUrl('/assets/video-walls.css')) . '">';
@@ -42,9 +45,14 @@ trait LayoutUi
                 self::navLink('/admin/settings', self::t('nav.settings', 'Настройки'), 'settings');
                 echo '</nav>';
             }
-            echo '<div class="sidebar-foot">' . I18n::languageLinks() . '<a class="logout-link" href="/logout">' . self::icon('logout') . self::t('nav.logout', 'Выход') . '</a></div></aside>';
+            echo '<div class="sidebar-foot">';
+            self::pwaInstallControl();
+            echo I18n::languageLinks() . '<a class="logout-link" href="/logout">' . self::icon('logout') . self::t('nav.logout', 'Выход') . '</a></div></aside>';
             $initial = strtoupper(substr((string)$user['login'], 0, 1) ?: 'U');
             echo '<main class="main workspace"><div class="topbar"><div><h1>' . Util::h($title) . '</h1></div><div class="user">' . Util::h($initial) . '</div></div>';
+            if (Util::path() === '/') {
+                self::pwaInstallSuggestion();
+            }
             if ($user['role'] === 'admin') {
                 self::portalUpdateBanner();
             }
@@ -54,6 +62,9 @@ trait LayoutUi
             echo '<main class="' . ($user ? 'workspace' : 'login-page') . '">';
             $body();
             echo '</main>';
+        }
+        if (!$user || $showChrome) {
+            self::pwaInstallDialog();
         }
         echo '<script>window.SESAME_I18N = ' . json_encode(I18n::js(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '; window.SESAME_CSRF = ' . json_encode(Csrf::token(), JSON_UNESCAPED_SLASHES) . ';</script>';
         echo '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script><script src="' . Util::h(self::assetUrl('/assets/app.js')) . '"></script>';
@@ -72,6 +83,59 @@ trait LayoutUi
         }
 
         return $path . '?v=' . filemtime($file);
+    }
+
+    private static function pwaInstallControl(): void
+    {
+        echo '<div class="pwa-install" data-pwa-controls hidden><button type="button" data-pwa-install aria-haspopup="dialog" aria-controls="pwa-install-dialog">' . self::icon('download') . '<span>' . Util::h(self::t('pwa.install', 'Установить приложение')) . '</span></button></div>';
+    }
+
+    private static function pwaInstallSuggestion(): void
+    {
+        echo '<section class="pwa-suggestion" data-pwa-controls data-pwa-suggestion hidden aria-label="' . Util::h(self::t('pwa.title', 'SesamePortal на вашем телефоне')) . '">';
+        echo '<img src="/assets/pwa/icon-192.png" width="48" height="48" alt=""><div class="pwa-suggestion-copy"><strong>' . Util::h(self::t('pwa.title', 'SesamePortal на вашем телефоне')) . '</strong><p>' . Util::h(self::t('pwa.benefit', 'Открывайте камеры с иконки на главном экране.')) . '</p></div>';
+        echo '<div class="pwa-suggestion-actions"><button type="button" class="primary" data-pwa-install aria-haspopup="dialog" aria-controls="pwa-install-dialog">' . Util::h(self::t('pwa.install', 'Установить приложение')) . '</button><button type="button" data-pwa-dismiss>' . Util::h(self::t('pwa.later', 'Позже')) . '</button></div></section>';
+    }
+
+    private static function pwaInstallDialog(): void
+    {
+        echo '<dialog id="pwa-install-dialog" class="pwa-dialog" data-pwa-help aria-labelledby="pwa-install-title" aria-describedby="pwa-install-description">';
+        echo '<div class="pwa-dialog-heading"><img src="/assets/pwa/icon-192.png" width="52" height="52" alt=""><div><h2 id="pwa-install-title">' . Util::h(self::t('pwa.install', 'Установить приложение')) . '</h2><p id="pwa-install-description">' . Util::h(self::t('pwa.benefit', 'Открывайте камеры с иконки на главном экране.')) . '</p></div><button type="button" class="pwa-dialog-close" data-pwa-close aria-label="' . Util::h(self::t('pwa.close', 'Закрыть')) . '">×</button></div>';
+        $platformSteps = [
+            'ios' => [
+                self::t('pwa.iosShare', 'В Safari нажмите «Поделиться» — квадрат со стрелкой вверх. Кнопка может быть в меню «…».'),
+                self::t('pwa.iosHome', 'Выберите «На экран Домой». Если пункта не видно, прокрутите список действий.'),
+                self::t('pwa.iosAdd', 'Если есть переключатель «Открывать как веб-приложение», включите его. Нажмите «Добавить».'),
+            ],
+            'android' => [
+                self::t('pwa.androidMenu', 'Откройте меню браузера «⋮».'),
+                self::t('pwa.androidInstall', 'Выберите «Установить приложение» или «Добавить на главный экран».'),
+                self::t('pwa.androidConfirm', 'Подтвердите установку. Иконка SesamePortal появится на телефоне.'),
+            ],
+            'desktop' => [
+                self::t('pwa.desktopMenu', 'Нажмите значок установки в адресной строке или откройте меню браузера.'),
+                self::t('pwa.desktopInstall', 'Выберите установку SesamePortal и подтвердите действие.'),
+            ],
+        ];
+        foreach ($platformSteps as $platform => $steps) {
+            echo '<div data-pwa-platform="' . $platform . '" hidden><ol class="pwa-steps">';
+            foreach ($steps as $index => $step) {
+                echo '<li><span class="pwa-step-number" aria-hidden="true">' . ($index + 1) . '</span><span>';
+                if ($platform === 'ios' && $index === 0) {
+                    echo '<svg class="pwa-share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9H5v12h14V9h-3M12 3v12M8 7l4-4 4 4"/></svg>';
+                }
+                echo Util::h($step) . '</span></li>';
+            }
+            echo '</ol>';
+            if ($platform !== 'desktop') {
+                echo '<p class="pwa-browser-hint">' . Util::h($platform === 'ios'
+                    ? self::t('pwa.iosBrowser', 'Нет нужного пункта или сайт открыт внутри мессенджера? Скопируйте адрес ниже и откройте его в Safari.')
+                    : self::t('pwa.androidBrowser', 'Нет нужного пункта или сайт открыт внутри мессенджера? Скопируйте адрес ниже и откройте его в Chrome.')) . '</p>';
+            }
+            echo '</div>';
+        }
+        echo '<div class="pwa-copy"><label for="pwa-install-url">' . Util::h(self::t('pwa.address', 'Адрес портала')) . '</label><div><input id="pwa-install-url" data-pwa-url type="url" readonly dir="ltr"><button type="button" data-pwa-copy>' . Util::h(self::t('pwa.copy', 'Скопировать')) . '</button></div><p data-pwa-copy-status role="status" aria-live="polite" data-copied="' . Util::h(self::t('pwa.copied', 'Адрес скопирован')) . '" data-select="' . Util::h(self::t('pwa.copyManually', 'Адрес выделен. Скопируйте его через меню устройства.')) . '"></p></div>';
+        echo '<button type="button" class="primary pwa-dialog-done" data-pwa-close>' . Util::h(self::t('pwa.done', 'Понятно')) . '</button></dialog>';
     }
 
     private static function navLink(string $href, string $label, string $icon, ?bool $activeOverride = null): void

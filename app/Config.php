@@ -38,6 +38,7 @@ final class Config
             'timezone' => getenv('SESAME_PORTAL_TIMEZONE') ?: 'UTC',
             'locale' => getenv('SESAME_PORTAL_LOCALE') ?: 'ru',
             'base_url' => getenv('SESAME_PORTAL_BASE_URL') ?: '',
+            'remember_login_enabled' => true,
             'auth_backend_path' => '/api/sesamedvr/auth',
             'rbt_authbackend' => ['clients' => []],
             'portal_update_enabled' => getenv('SESAME_PORTAL_UPDATE_ENABLED') !== '0',

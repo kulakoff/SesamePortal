@@ -10,6 +10,8 @@ return [
     'timezone' => 'UTC',
     'locale' => 'ru',
     'base_url' => 'https://portal.example.com',
+    // Remember trusted browsers/PWAs until logout, password change or revocation.
+    'remember_login_enabled' => true,
     'auth_backend_path' => '/api/sesamedvr/auth',
     // The RBT management_token is the same value as streamer.authbackend.management_token.
     'rbt_authbackend' => [

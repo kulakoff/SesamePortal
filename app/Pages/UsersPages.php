@@ -57,6 +57,9 @@ trait UsersPages
                         $id = DB::lastInsertId('users');
                     }
                     if ($message === '') {
+                        if ($blocked || $password !== '') {
+                            Auth::revokeRememberedLogins($id);
+                        }
                         self::replaceLinks('user_groups', 'user_id', $id, 'group_id', $groupIds);
                         $afterUser = self::rowById('users', $id) ?: ['login' => $login, 'role' => $role, 'blocked' => $blocked, 'hide_archive' => $hideArchive, 'ptz_allowed' => $ptzAllowed];
                         $afterGroupIds = self::linkedIds('user_groups', 'user_id', $id, 'group_id');

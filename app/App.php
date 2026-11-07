@@ -52,7 +52,7 @@ final class App
             [$status, $payload] = RbtAuthBackend::registerRequest();
             self::apiJson($payload, $status);
         }
-        Auth::start();
+        Auth::user();
         Csrf::verify();
         I18n::bootstrap();
 

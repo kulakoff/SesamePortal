@@ -36,6 +36,57 @@ final class I18nCatalog
         }
         unset($items);
 
+        foreach ($messages as $locale => &$items) {
+            $items += $locale === 'ru' ? [
+                'login.remember' => 'Запомнить меня',
+                'login.rememberHint' => 'Используйте только на личном устройстве. Кнопка «Выход» отменяет сохранение входа.',
+                'pwa.install' => 'Установить приложение',
+                'pwa.title' => 'SesamePortal на вашем телефоне',
+                'pwa.benefit' => 'Открывайте камеры с иконки на главном экране.',
+                'pwa.later' => 'Позже',
+                'pwa.iosShare' => 'В Safari нажмите «Поделиться» — квадрат со стрелкой вверх. Кнопка может быть в меню «…».',
+                'pwa.iosHome' => 'Выберите «На экран Домой». Если пункта не видно, прокрутите список действий.',
+                'pwa.iosAdd' => 'Если есть переключатель «Открывать как веб-приложение», включите его. Нажмите «Добавить».',
+                'pwa.androidMenu' => 'Откройте меню браузера «⋮».',
+                'pwa.androidInstall' => 'Выберите «Установить приложение» или «Добавить на главный экран».',
+                'pwa.androidConfirm' => 'Подтвердите установку. Иконка SesamePortal появится на телефоне.',
+                'pwa.desktopMenu' => 'Нажмите значок установки в адресной строке или откройте меню браузера.',
+                'pwa.desktopInstall' => 'Выберите установку SesamePortal и подтвердите действие.',
+                'pwa.iosBrowser' => 'Нет нужного пункта или сайт открыт внутри мессенджера? Скопируйте адрес ниже и откройте его в Safari.',
+                'pwa.androidBrowser' => 'Нет нужного пункта или сайт открыт внутри мессенджера? Скопируйте адрес ниже и откройте его в Chrome.',
+                'pwa.address' => 'Адрес портала',
+                'pwa.copy' => 'Скопировать',
+                'pwa.copied' => 'Адрес скопирован',
+                'pwa.copyManually' => 'Адрес выделен. Скопируйте его через меню устройства.',
+                'pwa.done' => 'Понятно',
+                'pwa.close' => 'Закрыть',
+            ] : [
+                'login.remember' => 'Remember me',
+                'login.rememberHint' => 'Use only on your personal device. Signing out removes the saved login.',
+                'pwa.install' => 'Install app',
+                'pwa.title' => 'SesamePortal on your phone',
+                'pwa.benefit' => 'Open your cameras from a home-screen icon.',
+                'pwa.later' => 'Later',
+                'pwa.iosShare' => 'In Safari, tap Share: the square with an upward arrow. It may be inside the … menu.',
+                'pwa.iosHome' => 'Choose Add to Home Screen. Scroll through the actions if you cannot see it.',
+                'pwa.iosAdd' => 'If Open as Web App is offered, turn it on. Tap Add.',
+                'pwa.androidMenu' => 'Open the browser menu ⋮.',
+                'pwa.androidInstall' => 'Choose Install app or Add to Home screen.',
+                'pwa.androidConfirm' => 'Confirm installation. The SesamePortal icon will appear on your phone.',
+                'pwa.desktopMenu' => 'Click the install icon in the address bar or open the browser menu.',
+                'pwa.desktopInstall' => 'Choose to install SesamePortal and confirm.',
+                'pwa.iosBrowser' => 'Missing the menu item or using a messenger browser? Copy the address below and open it in Safari.',
+                'pwa.androidBrowser' => 'Missing the menu item or using a messenger browser? Copy the address below and open it in Chrome.',
+                'pwa.address' => 'Portal address',
+                'pwa.copy' => 'Copy',
+                'pwa.copied' => 'Address copied',
+                'pwa.copyManually' => 'Address selected. Copy it using your device menu.',
+                'pwa.done' => 'Got it',
+                'pwa.close' => 'Close',
+            ];
+        }
+        unset($items);
+
         return $messages;
     }
 

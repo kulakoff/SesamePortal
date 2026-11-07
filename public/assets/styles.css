@@ -2321,3 +2321,41 @@ body.player-view .player-frame {
     min-width: 0;
   }
 }
+
+/* Install control is shared by the sign-in card and the navigation footer. */
+.pwa-install { margin-block: 12px; }
+.pwa-install[hidden], .pwa-suggestion[hidden], .pwa-dialog [hidden] { display: none !important; }
+.pwa-install button { width: 100%; white-space: normal; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pwa-install button svg { width: 18px; height: 18px; flex: none; }
+.sidebar-foot .pwa-install { color: #eee; }
+.login-card .form > p.muted { margin: 0; font-size: 12px; line-height: 1.5; }
+.pwa-suggestion { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 14px; align-items: center; margin-block: 0 18px; padding: 16px; border: 1px solid #dfc997; border-radius: 16px; background: #fff9eb; }
+.pwa-suggestion img, .pwa-dialog-heading img { border-radius: 12px; }
+.pwa-suggestion-copy strong { display: block; line-height: 1.4; }
+.pwa-suggestion-copy p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: #69645b; }
+.pwa-suggestion-actions { display: flex; gap: 8px; }
+.pwa-suggestion-actions button { min-height: 44px; white-space: normal; }
+.pwa-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; border: 1px solid #ded7ca; border-radius: 22px; color: #171717; background: #fff; box-shadow: 0 20px 70px #0004; overflow: auto; overscroll-behavior: contain; }
+.pwa-dialog:not([open]) { display: none; }
+.pwa-dialog::backdrop { background: #0009; }
+.pwa-dialog-heading { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; gap: 12px; align-items: start; }
+.pwa-dialog-heading h2 { margin: 0 0 5px; font-size: 20px; line-height: 1.25; }
+.pwa-dialog-heading p { margin: 0; color: #69645b; font-size: 13px; line-height: 1.5; }
+.pwa-dialog-close { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; font-size: 26px; line-height: 1; }
+.pwa-steps { list-style: none; padding: 0; margin: 24px 0 18px; display: grid; gap: 16px; }
+.pwa-steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; line-height: 1.5; }
+.pwa-step-number { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f7efdF; color: #77551b; font-weight: 700; }
+.pwa-share-icon { width: 23px; height: 23px; vertical-align: middle; margin-inline-end: 5px; color: #007aff; }
+.pwa-browser-hint { padding: 12px; border-radius: 10px; background: #f8f6f1; color: #69645b; font-size: 13px; line-height: 1.5; }
+.pwa-copy label { display: block; margin-block: 16px 7px; font-size: 13px; font-weight: 700; }
+.pwa-copy > div { display: flex; gap: 8px; }
+.pwa-copy input { width: 0; min-width: 0; flex: 1; font-size: 16px; }
+.pwa-copy button { min-height: 44px; }
+.pwa-copy [role="status"] { min-height: 20px; margin-block: 7px 14px; font-size: 12px; color: #69645b; }
+.pwa-dialog-done { width: 100%; min-height: 44px; }
+@media (max-width: 600px) {
+  .pwa-suggestion { grid-template-columns: 48px minmax(0, 1fr); }
+  .pwa-suggestion-actions { grid-column: 1 / -1; }
+  .pwa-suggestion-actions .primary { flex: 1; }
+  .pwa-dialog { width: 100%; max-width: none; max-height: 90dvh; margin: auto 0 0; padding: 22px 20px max(20px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
+}

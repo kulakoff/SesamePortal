@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "SesamePortal",
+  "short_name": "SesamePortal",
+  "description": "SesameWare video surveillance portal",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F8F6F1",
+  "theme_color": "#121212",
+  "icons": [
+    { "src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

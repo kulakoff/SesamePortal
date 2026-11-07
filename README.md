@@ -36,6 +36,54 @@ The UI supports the same language set as SesameDVR: `ru`, `en`, `de`, `fr`,
 language is configured with `locale` or `SESAME_PORTAL_LOCALE`; users can
 switch from the language dropdown or with `?lang=<code>`.
 
+## Installed App and Remembered Login
+
+Install SesamePortal as a PWA to launch the same portal from a home-screen icon
+in its own window. Open the HTTPS portal and select **Install app** on the login
+page or in the navigation. On iPhone/iPad, use Safari → Share → Add to Home Screen;
+on Android, installation is also available in the browser menu.
+
+On phones, an install suggestion appears above the camera list. **Later** hides
+it for 30 days while the menu entry stays available. Installed app mode hides
+installation controls. Android uses the native prompt when the browser provides
+one; otherwise the button opens platform-specific steps. iPhone instructions
+show Safari's installation steps. The sheet can copy the portal's clean root
+URL, without player parameters or tokens, for opening it outside a messenger.
+
+Select **Remember me** when signing in on a personal device. The server does not
+impose a fixed login lifetime: access lasts until logout, password change,
+account blocking/deletion, or revocation. Closing the app, restarting the server,
+or garbage-collecting PHP sessions does not require another login. Leaving the
+checkbox off retains ordinary browser-session behavior.
+
+The app does not store the password. Each remembered login gets a random device
+token, stored only as a hash in `remembered_logins`. Its cookie uses `HttpOnly`,
+`SameSite=Lax`, and `Secure` with HTTPS. Logout revokes the current device token;
+password changes and account blocking through the UI/API revoke all remembered
+logins for that account. CLI backups exclude device tokens, and restoring a
+backup clears existing remembered logins.
+
+Browser storage limits still apply. Chrome caps cookie retention at 400 days;
+Portal renews the cookie during use without asking for a password. Clearing site
+data, losing app storage, or exceeding browser retention can require a new login.
+See [Chrome's cookie limit](https://developer.chrome.com/blog/cookie-max-age-expires).
+
+`remember_login_enabled` defaults to `true`. Behind a TLS-terminating reverse
+proxy, set `base_url` to the public `https://` URL or configure PHP's `HTTPS`
+parameter correctly. Client-supplied `X-Forwarded-Proto` is not automatically
+trusted.
+
+The service worker caches only a public offline explanation. It never caches
+authenticated pages, camera images, video, API responses or playback tokens.
+Video requires access to the server. `/manifest.webmanifest` and `/sw.js` are
+public. Deploy at the HTTPS site root; localhost is supported for development,
+but remote plain HTTP does not support PWA functionality.
+
+Run `bash tests/http_smoke.sh`, `bash tests/release_smoke.sh`, and
+`node tests/pwa_browser.cjs` (requires Playwright and installed Chrome). The browser
+test uses a temporary database and checks installability, restart, revocation,
+cookie renewal, mobile layout and offline behavior.
+
 ## Camera Modes
 
 Each camera can run in one of three modes:
