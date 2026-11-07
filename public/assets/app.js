@@ -1132,11 +1132,13 @@
     if (canvas.hidden) container.classList.add("is-loading");
     let finished = false;
     let timeout;
+    let frameCallback = null;
     const finish = (outcome) => {
       if (finished) return;
       finished = true;
       window.clearTimeout(timeout);
-      video.onloadeddata = video.oncanplay = video.onerror = null;
+      if (frameCallback !== null) video.cancelVideoFrameCallback(frameCallback);
+      video.onloadeddata = video.onseeked = video.onerror = null;
       video.pause();
       video.removeAttribute("src");
       video.load();
@@ -1168,7 +1170,26 @@
         finish("error");
       }
     };
-    video.onloadeddata = video.oncanplay = drawFrame;
+    // Safari can fire loadeddata/canplay before drawImage has usable pixels,
+    // especially after the redirect to the DVR. Wait for the decoded frame.
+    if (typeof video.requestVideoFrameCallback === "function") {
+      frameCallback = video.requestVideoFrameCallback(() => {
+        frameCallback = null;
+        drawFrame();
+      });
+    } else {
+      // Older browsers: seeking inside the single-frame clip forces a frame
+      // to become available without playing every camera in the mosaic.
+      video.onloadeddata = () => {
+        if (finished) return;
+        if (!Number.isFinite(video.duration) || video.duration <= 0) {
+          finish("error");
+          return;
+        }
+        video.currentTime = Math.min(0.05, video.duration / 2);
+      };
+      video.onseeked = drawFrame;
+    }
     video.onerror = () => finish("error");
     timeout = window.setTimeout(() => finish("error"), 20000);
     const source = canvas.dataset.previewSrc;

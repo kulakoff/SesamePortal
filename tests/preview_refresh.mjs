@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../public/assets/app.js', import.meta.url), 'utf8');
 
-function harness(options = [{}]) {
+function harness(options = [{}], { frameCallback = true } = {}) {
   let now = 100000;
   let timerId = 0;
   const timers = new Map();
@@ -52,7 +52,12 @@ function harness(options = [{}]) {
         readyState: 0,
         videoWidth: 0,
         videoHeight: 0,
+        duration: 0.1,
+        currentTime: 0,
         pauses: 0,
+        frame: null,
+        requestVideoFrameCallback: frameCallback ? function (fn) { this.frame = fn; return 1; } : undefined,
+        cancelVideoFrameCallback(id) { assert.equal(id, 1); this.frame = null; },
         setAttribute(name, value) { this.attributes[name] = value; },
         removeAttribute(name) { if (name === 'src') this.src = ''; },
         pause() { this.pauses++; },
@@ -90,16 +95,59 @@ function harness(options = [{}]) {
     }
     now = end;
   }
-  function ready(video = videos.at(-1)) {
+  function loaded(video = videos.at(-1)) {
     video.readyState = 2;
     video.videoWidth = 1920;
     video.videoHeight = 1080;
     video.onloadeddata?.();
+    video.oncanplay?.();
+    tick();
+  }
+  function ready(video = videos.at(-1)) {
+    loaded(video);
+    const callback = video.frame;
+    video.frame = null;
+    if (callback) callback(); else video.onseeked?.();
     tick();
   }
   function emit(name) { for (const fn of events.get(name) || []) fn(); tick(); }
-  return { canvases, videos, document, window, observed, tick, ready, emit };
+  return { canvases, videos, document, window, observed, tick, loaded, ready, emit };
 }
+
+test('loadeddata and canplay do not publish pixels before a frame is available', () => {
+  const h = harness();
+  h.tick();
+  h.loaded();
+  assert.equal(h.canvases[0].hidden, true);
+  assert.equal(h.canvases[0].frames.length, 0);
+  assert.notEqual(h.videos[0].src, '');
+  h.ready();
+  assert.equal(h.canvases[0].frames.length, 1);
+  assert.equal(h.videos[0].src, '');
+});
+
+test('without video frame callbacks, seek inside the preview before drawing', () => {
+  const h = harness([{}], { frameCallback: false });
+  h.tick();
+  h.loaded();
+  assert.equal(h.videos[0].currentTime, 0.05);
+  assert.equal(h.canvases[0].frames.length, 0);
+  h.videos[0].onseeked();
+  assert.equal(h.canvases[0].frames.length, 1);
+  assert.equal(h.videos[0].src, '');
+});
+
+test('cancelling a pending frame callback prevents late drawing and releases the decoder', () => {
+  const h = harness();
+  h.tick();
+  h.loaded();
+  const v = h.videos[0], lateFrame = v.frame;
+  h.emit('pagehide');
+  assert.equal(v.frame, null);
+  assert.equal(v.src, '');
+  lateFrame();
+  assert.equal(h.canvases[0].frames.length, 0);
+});
 
 test('refreshes a static canvas on the personal interval without clearing the old frame', () => {
   const h = harness();
@@ -166,7 +214,7 @@ test('hidden tab cancels in-flight requests and resumes once, with no catch-up b
   const h = harness();
   h.tick();
   const old = h.videos[0];
-  const lateEvent = old.onloadeddata;
+  const lateEvent = old.frame;
   h.document.hidden = true;
   h.emit('visibilitychange');
   assert.equal(old.src, '');

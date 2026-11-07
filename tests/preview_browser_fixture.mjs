@@ -1,4 +1,5 @@
 // Run with node tests/preview_browser_fixture.mjs; requires ffmpeg, uses no Portal DB.
+// Add --cross-origin to reproduce the Portal -> DVR redirect in iOS Safari.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -29,13 +30,16 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewp
   </main><output id="diagnostics" hidden></output><script src="/assets/app.js"></script>
   <script>setInterval(() => {
     document.getElementById('diagnostics').textContent = JSON.stringify(Array.from(document.querySelectorAll('canvas')).map(c => {
-      const pixels = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let pixels;
+      try { pixels = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; }
+      catch { return {id:c.dataset.previewSrc, hidden:c.hidden, tainted:true}; }
       let checksum = 0;
       for (let i = 0; i < pixels.length; i += 16) checksum = (checksum + pixels[i] * (i + 1)) >>> 0;
       return {id:c.dataset.previewSrc, hidden:c.hidden, checksum};
     }));
   }, 500);</script></body></html>`;
-const server = createServer((req, res) => {
+let mediaOrigin = '';
+const handleRequest = (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   res.setHeader('Cache-Control', 'no-store');
   if (assets.has(url.pathname)) {
@@ -44,7 +48,7 @@ const server = createServer((req, res) => {
     res.end(readFileSync(path));
   } else if (url.pathname === '/viewer/preview') {
     requests.push({ id: url.searchParams.get('id'), at: Date.now(), cacheBust: url.searchParams.get('_') });
-    res.writeHead(302, { Location: `/dvr/preview.mp4${url.search}&token=local-fixture` });
+    res.writeHead(302, { Location: `${mediaOrigin}/dvr/preview.mp4${url.search}&token=local-fixture` });
     res.end();
   } else if (url.pathname === '/dvr/preview.mp4') {
     const id = url.searchParams.get('id');
@@ -84,5 +88,11 @@ const server = createServer((req, res) => {
     res.setHeader('Content-Type', 'text/html');
     res.end(url.pathname === '/' ? html : '<h1>Player link works</h1>');
   }
-});
+};
+if (process.argv.includes('--cross-origin')) {
+  const mediaServer = createServer(handleRequest);
+  await new Promise(resolve => mediaServer.listen(0, '127.0.0.1', resolve));
+  mediaOrigin = `http://127.0.0.1:${mediaServer.address().port}`;
+}
+const server = createServer(handleRequest);
 server.listen(0, '127.0.0.1', () => console.log(`Preview fixture: http://127.0.0.1:${server.address().port}/`));
