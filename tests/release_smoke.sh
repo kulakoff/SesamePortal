@@ -11,6 +11,32 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/portal-release-test.XXXXXX")"
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
 
+# Schema upgrades may add columns and empty tables, but must preserve every
+# existing row and field in both the shared database and a restored backup.
+assert_backup_compatible() {
+  php -r '
+    $before = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR)["tables"];
+    $after = json_decode(file_get_contents($argv[2]), true, 512, JSON_THROW_ON_ERROR)["tables"];
+    foreach ($before as $table => $rows) {
+        if (!array_key_exists($table, $after) || count($rows) !== count($after[$table])) {
+            throw new RuntimeException("Backup row count changed: " . $table);
+        }
+        foreach ($rows as $index => $row) {
+            foreach ($row as $column => $value) {
+                if (!array_key_exists($column, $after[$table][$index]) || $after[$table][$index][$column] !== $value) {
+                    throw new RuntimeException("Backup value changed: " . $table . "." . $column . " row " . $index);
+                }
+            }
+        }
+    }
+    foreach (array_diff_key($after, $before) as $table => $rows) {
+        if ($rows !== []) {
+            throw new RuntimeException("New backup table unexpectedly contains data: " . $table);
+        }
+    }
+  ' "$1" "$2"
+}
+
 bash "$ROOT/scripts/package-release.sh" --version module-smoke --output "$WORK/release.tar.gz"
 mkdir "$WORK/releases"
 tar -xzf "$WORK/release.tar.gz" -C "$WORK/releases"
@@ -47,11 +73,7 @@ php -r 'if (!rename($argv[1], $argv[2])) exit(1);' "$WORK/current.next" "$WORK/c
 php "$WORK/current/tests/module_bootstrap.php"
 php "$WORK/current/bin/portal" migrate
 php "$WORK/current/bin/portal" backup "$WORK/after.json"
-php -r '
-    $before = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
-    $after = json_decode(file_get_contents($argv[2]), true, 512, JSON_THROW_ON_ERROR);
-    if ($before["tables"] !== $after["tables"]) throw new RuntimeException("Release switch changed stored data");
-' "$WORK/before.json" "$WORK/after.json"
+assert_backup_compatible "$WORK/before.json" "$WORK/after.json"
 
 export SESAME_PORTAL_STATE_DIR="$WORK/restored"
 export SESAME_PORTAL_DB_DSN="sqlite:$WORK/restored/portal.sqlite"
@@ -60,9 +82,5 @@ mkdir -p "$SESAME_PORTAL_STATE_DIR"
 php "$WORK/current/bin/portal" migrate
 php "$WORK/current/bin/portal" restore "$WORK/before.json"
 php "$WORK/current/bin/portal" backup "$WORK/restored.json"
-php -r '
-    $before = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
-    $restored = json_decode(file_get_contents($argv[2]), true, 512, JSON_THROW_ON_ERROR);
-    if ($before["tables"] !== $restored["tables"]) throw new RuntimeException("Release CLI restore changed stored data");
-' "$WORK/before.json" "$WORK/restored.json"
+assert_backup_compatible "$WORK/before.json" "$WORK/restored.json"
 echo "release smoke: packaged modules, current symlink, shared state, migration and CLI backup/restore passed"
