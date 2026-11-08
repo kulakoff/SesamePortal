@@ -205,6 +205,21 @@ nginx site-конфиги. Также installer устанавливает
 `/usr/local/sbin/sesame-portal-update` и sudoers-правило, чтобы администратор
 мог обновлять Portal из web UI в разделе `Настройки`.
 
+Если хост за NAT и сертификат выпускается заранее через [acme.sh](https://github.com/acmesh-official/acme.sh)
+(DNS-01), после успешного `--issue` установите портал так же с HTTPS nginx, но без certbot:
+
+```bash
+sudo bash scripts/install.sh \
+  --domain portal.example.com \
+  --acme-sh \
+  --admin-login admin \
+  --admin-password 'change-me-now'
+```
+
+Продление сертификата остаётся на стороне acme.sh (`--install-cert` с теми же путями,
+что и у certbot). Чтобы перевести уже установленный HTTP-only экземпляр на HTTPS:
+`--repair --acme-sh` с тем же `--domain`.
+
 Для repair/update запуска поверх существующей базы:
 
 ```bash

@@ -8,6 +8,7 @@ ADMIN_PASSWORD=""
 INSTALL_DIR="/opt/sesame-portal/current"
 STATE_DIR="/var/lib/sesame-portal"
 NO_ACME=0
+ACME_SH=0
 REPAIR=0
 SKIP_ADMIN_UPDATE=0
 BACKUP_DIR=""
@@ -35,6 +36,7 @@ Options:
   --install-dir <path>        Install target, default /opt/sesame-portal/current.
   --state-dir <path>          State directory, default /var/lib/sesame-portal.
   --no-acme                   Configure HTTP only and skip certbot.
+  --acme-sh                   Use existing acme.sh cert (e.g. DNS-01); skip certbot.
   --repair                    Re-apply files/nginx/cron/migrations; admin password
                               may be omitted when an existing DB is present.
 USAGE
@@ -49,6 +51,7 @@ while [[ $# -gt 0 ]]; do
     --install-dir) INSTALL_DIR="${2:-}"; shift 2 ;;
     --state-dir) STATE_DIR="${2:-}"; shift 2 ;;
     --no-acme) NO_ACME=1; shift ;;
+    --acme-sh) ACME_SH=1; shift ;;
     --repair) REPAIR=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
@@ -65,8 +68,13 @@ if [[ -z "$DOMAIN" ]]; then
   exit 2
 fi
 
-if [[ "$NO_ACME" != "1" && -z "$EMAIL" ]]; then
-  echo "--email is required unless --no-acme is used" >&2
+if [[ "$NO_ACME" == "1" && "$ACME_SH" == "1" ]]; then
+  echo "use either --no-acme or --acme-sh, not both" >&2
+  exit 2
+fi
+
+if [[ "$NO_ACME" != "1" && "$ACME_SH" != "1" && -z "$EMAIL" ]]; then
+  echo "--email is required unless --no-acme or --acme-sh is used" >&2
   exit 2
 fi
 
@@ -370,6 +378,29 @@ server {
 NGINX
 }
 
+deploy_acme_sh_cert() {
+  local acme
+  install -d -m 0755 "/etc/letsencrypt/live/$DOMAIN"
+  acme="$(command -v acme.sh 2>/dev/null || true)"
+  if [[ -z "$acme" ]]; then
+    acme="/root/.acme.sh/acme.sh"
+  fi
+  if [[ ! -x "$acme" ]]; then
+    echo "acme.sh not found; issue a certificate first or install acme.sh" >&2
+    exit 1
+  fi
+  "$acme" --install-cert -d "$DOMAIN" \
+    --key-file "/etc/letsencrypt/live/$DOMAIN/privkey.pem" \
+    --fullchain-file "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" \
+    --reloadcmd "systemctl reload nginx"
+}
+
+patch_base_url_https() {
+  if [[ -f "$STATE_DIR/config.php" ]]; then
+    sed -i "s#'base_url' => 'http://$DOMAIN'#'base_url' => 'https://$DOMAIN'#" "$STATE_DIR/config.php"
+  fi
+}
+
 write_cron() {
   cat > "$CRON_FILE" <<CRON
 SHELL=/bin/sh
@@ -420,11 +451,20 @@ main() {
 
   local fpm
   fpm="$(detect_php_fpm_socket)"
-  write_nginx_http "$fpm"
-  nginx -t
-  systemctl reload nginx || systemctl restart nginx
-
-  if [[ "$NO_ACME" != "1" ]]; then
+  if [[ "$ACME_SH" == "1" ]]; then
+    deploy_acme_sh_cert
+    write_nginx_https "$fpm"
+    patch_base_url_https
+    nginx -t
+    systemctl reload nginx || systemctl restart nginx
+  elif [[ "$NO_ACME" == "1" ]]; then
+    write_nginx_http "$fpm"
+    nginx -t
+    systemctl reload nginx || systemctl restart nginx
+  else
+    write_nginx_http "$fpm"
+    nginx -t
+    systemctl reload nginx || systemctl restart nginx
     certbot certonly --webroot -w "$INSTALL_DIR/public" -d "$DOMAIN" --agree-tos -m "$EMAIL" --non-interactive
     write_nginx_https "$fpm"
     nginx -t
